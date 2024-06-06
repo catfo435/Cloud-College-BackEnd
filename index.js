@@ -1,13 +1,19 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const cors = require('cors') 
 const [Student,Instructor,Course] = require('./models/exports.js');
 
 const app = express();
 const port = 3000;
 
+let corsOptions = { 
+  origin : ['http://localhost:5173'],  //put this in env later
+} 
+
 // Middleware
-app.use(bodyParser.json());
+app.use(cors(corsOptions))
+app.use(bodyParser.json({ limit: '50mb' })); //limit for request size, the profile picture might be too big and exceed the limit.
 
 //--------- STUDENTS CRUD -------------
 
@@ -42,10 +48,10 @@ app.get('/students', async (req, res) => {
   }
 });
 
-// Read a student by instituteId
-app.get('/students/:instituteId', async (req, res) => {
+// Read a student by email
+app.get('/students/:email', async (req, res) => {
   try {
-    const student = await Student.findOne({ instituteId: req.params.instituteId });
+    const student = await Student.findOne({ email: req.params.email });
     if (!student) {
       return res.status(404).send();
     }
