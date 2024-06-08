@@ -61,6 +61,26 @@ app.get('/students/:email', async (req, res) => {
   }
 });
 
+//Get all the courses the student is enrolled in
+app.get('/students/:email/courses', async (req, res) => { //change this to find by objectid when u store id in localstorage
+  try {
+    const student = await Student.findOne({ email: req.params.email })
+    let courses = await Course.find({"_id":{"$in" : student.courses}})
+    
+    for (let i=0;i<courses.length;i++){
+      console.log(courses[i]);
+      courses[i] = {...(courses[i])._doc,instructors : await Instructor.find({"_id":{"$in" : courses[i].instructors}})}
+    }
+    
+    if (!student) {
+      return res.status(404).send();
+    }
+    res.status(200).send(courses);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+})
+
 // Update a student by instituteId
 app.patch('/students/:instituteId', async (req, res) => {
   const updates = Object.keys(req.body);
