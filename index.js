@@ -68,7 +68,6 @@ app.get('/students/:email/courses', async (req, res) => { //change this to find 
     let courses = await Course.find({"_id":{"$in" : student.courses}})
     
     for (let i=0;i<courses.length;i++){
-      console.log(courses[i]);
       courses[i] = {...(courses[i])._doc,instructors : await Instructor.find({"_id":{"$in" : courses[i].instructors}})}
     }
     
@@ -155,6 +154,24 @@ app.post('/instructors', async (req, res) => {
       res.status(500).send(error);
     }
   });
+
+  app.get('/instructors/:email/courses', async (req, res) => { //change this to find by objectid when u store id in localstorage
+    try {
+      const instructor = await Instructor.findOne({ email: req.params.email })
+      let courses = await Course.find({"_id":{"$in" : instructor.courses}})
+      
+      for (let i=0;i<courses.length;i++){
+        courses[i] = {...(courses[i])._doc,instructors : await Instructor.find({"_id":{"$in" : courses[i].instructors}})}
+      }
+      
+      if (!instructor) {
+        return res.status(404).send();
+      }
+      res.status(200).send(courses);
+    } catch (error) {
+      res.status(500).send(error);
+    }
+  })
   
   // Update an instructor by instituteId
   app.patch('/instructors/:instituteId', async (req, res) => {
@@ -221,13 +238,16 @@ app.post('/courses', async (req, res) => {
 app.get('/courses', async (req, res) => {
   try {
     const courses = await Course.find();
+    for (let i=0;i<courses.length;i++){
+      courses[i] = {...(courses[i])._doc,instructors : await Instructor.find({"_id":{"$in" : courses[i].instructors}})}
+    }
     res.status(200).send(courses);
   } catch (error) {
     res.status(500).send(error);
   }
 });
 
-// Read a course by courseId
+// Read a course by id
 app.get('/courses/:courseId', async (req, res) => {
   try {
     const course = await Course.findOne({ courseId: req.params.courseId });
