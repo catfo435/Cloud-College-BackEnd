@@ -13,7 +13,7 @@ let corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions))
-app.use(bodyParser.json({ limit: '50mb' })); //limit for request size, the profile picture might be too big and exceed the limit.
+app.use(bodyParser.json()); //limit for request size, the profile picture might be too big and exceed the limit.
 
 //--------- STUDENTS CRUD -------------
 
@@ -34,6 +34,7 @@ app.post('/students', async (req, res) => {
     await student.save();
     res.status(201).send(student);
   } catch (error) {
+    console.error(error)
     res.status(400).send(error);
   }
 });
@@ -44,6 +45,7 @@ app.get('/students', async (req, res) => {
     const students = await Student.find();
     res.status(200).send(students);
   } catch (error) {
+    console.error(error)
     res.status(500).send(error);
   }
 });
@@ -57,6 +59,7 @@ app.get('/students/:email', async (req, res) => {
     }
     res.status(200).send(student);
   } catch (error) {
+    console.error(error)
     res.status(500).send(error);
   }
 });
@@ -76,6 +79,7 @@ app.get('/students/:email/courses', async (req, res) => { //change this to find 
     }
     res.status(200).send(courses);
   } catch (error) {
+    console.error(error)
     res.status(500).send(error);
   }
 })
@@ -99,6 +103,7 @@ app.patch('/students/:instituteId', async (req, res) => {
 
     res.status(200).send(result);
   } catch (error) {
+    console.error(error)
     res.status(400).send(error);
   }
 });
@@ -114,6 +119,7 @@ app.delete('/students/:instituteId', async (req, res) => {
 
     res.status(200).send(student);
   } catch (error) {
+    console.error(error)
     res.status(500).send(error);
   }
 });
@@ -128,6 +134,7 @@ app.post('/instructors', async (req, res) => {
       await instructor.save();
       res.status(201).send(instructor);
     } catch (error) {
+    console.error(error)
       res.status(400).send(error);
     }
   });
@@ -138,6 +145,7 @@ app.post('/instructors', async (req, res) => {
       const instructors = await Instructor.find();
       res.status(200).send(instructors);
     } catch (error) {
+    console.error(error)
       res.status(500).send(error);
     }
   });
@@ -151,6 +159,7 @@ app.post('/instructors', async (req, res) => {
       }
       res.status(200).send(instructor);
     } catch (error) {
+    console.error(error)
       res.status(500).send(error);
     }
   });
@@ -169,6 +178,7 @@ app.post('/instructors', async (req, res) => {
       }
       res.status(200).send(courses);
     } catch (error) {
+    console.error(error)
       res.status(500).send(error);
     }
   })
@@ -192,6 +202,7 @@ app.post('/instructors', async (req, res) => {
   
       res.status(200).send(result);
     } catch (error) {
+    console.error(error)
       res.status(400).send(error);
     }
   });
@@ -207,6 +218,7 @@ app.post('/instructors', async (req, res) => {
   
       res.status(200).send(instructor);
     } catch (error) {
+    console.error(error)
       res.status(500).send(error);
     }
   });
@@ -230,6 +242,7 @@ app.post('/courses', async (req, res) => {
     await course.save();
     res.status(201).send(course);
   } catch (error) {
+    console.error(error)
     res.status(400).send(error);
   }
 });
@@ -243,6 +256,7 @@ app.get('/courses', async (req, res) => {
     }
     res.status(200).send(courses);
   } catch (error) {
+    console.error(error)
     res.status(500).send(error);
   }
 });
@@ -250,12 +264,13 @@ app.get('/courses', async (req, res) => {
 // Read a course by id
 app.get('/courses/:courseId', async (req, res) => {
   try {
-    const course = await Course.findOne({ courseId: req.params.courseId });
+    const course = await Course.findOne({ _id: req.params.courseId });
     if (!course) {
       return res.status(404).send();
     }
     res.status(200).send(course);
   } catch (error) {
+    console.error(error)
     res.status(500).send(error);
   }
 });
@@ -289,9 +304,32 @@ app.patch('/courses/:courseId', async (req, res) => {
 
     res.status(200).send(course);
   } catch (error) {
+    console.error(error)
     res.status(400).send(error);
   }
 });
+
+// Add topic to a course by courseId
+app.patch('/courses/:courseId/addContent', async (req, res) => {
+
+  try {
+
+    let course = await Course.findOne({ _id: req.params.courseId });
+    
+    course.content.push(req.body)
+
+    course = await Course.findOneAndUpdate({ _id: req.params.courseId }, {content : course.content}, { new: true });
+
+    if (!course) {
+      return res.status(404).send();
+    }
+
+    res.status(200).send(course);
+  } catch (error) {
+    console.error(error)
+    res.status(400).send(error);
+  }
+})
 
 // Delete a course by courseId
 app.delete('/courses/:courseId', async (req, res) => {
@@ -304,6 +342,7 @@ app.delete('/courses/:courseId', async (req, res) => {
 
     res.status(200).send(course);
   } catch (error) {
+    console.error(error)
     res.status(500).send(error);
   }
 })

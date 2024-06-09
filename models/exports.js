@@ -61,15 +61,36 @@ const instructorSchema = new mongoose.Schema({
 const courseSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true
+    required: true,
+    description: "The name of the course. Must be a string."
   },
   courseId: {
     type: String,
     required: true,
+    unique: true,
+    description: "The unique identifier of the course. Must follow the format XXX FYYY or XXXX FYYY."
   },
   instructors: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Instructor'
+    ref: 'Instructor',
+    required: true,
+    description: "An array of ObjectIds referencing the instructors teaching the course."
+  }],
+  content: [{
+    heading: {
+      type: String,
+      required: true,
+      description: "The heading of the content. Must be a string."
+    },
+    description: {
+      type: String,
+      required: true,
+      description: "The description of the content. Must be a string."
+    },
+    file: {
+      type: String,
+      description: "The base64-encoded string of the content file. This field is optional."
+    }
   }]
 });
 
