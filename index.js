@@ -3,13 +3,24 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors') 
 const [Student,Instructor,Course] = require('./models/exports.js');
+const nodemailer = require("nodemailer");
+require('dotenv').config()
 
 const app = express();
 const port = 3000;
 
 let corsOptions = { 
   origin : ['http://localhost:5173'],  //put this in env later
-} 
+}
+
+const transporter = nodemailer.createTransport({
+  host: 'smtp.zoho.in',
+  port: 587,
+  auth: {
+      user: process.env.ZOHO_USERNAME,
+      pass: process.env.ZOHO_PWD
+  }
+})
 
 // Middleware
 app.use(cors(corsOptions))
@@ -18,7 +29,7 @@ app.use(bodyParser.json()); //limit for request size, the profile picture might 
 //--------- STUDENTS CRUD -------------
 
 // MongoDB connection
-mongoose.connect('mongodb://localhost:27017/crux-online-learning', {
+mongoose.connect(process.env.MONGODB_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => {
@@ -64,11 +75,96 @@ app.get('/students/:email', async (req, res) => {
   }
 });
 
+app.patch('/students/:email/addCourse', async (req, res) => {
+  const { email } = req.params;
+  const { _id } = req.body;
+
+  try {
+    // Check if the course exists
+    const course = await Course.findById(_id);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Find the student by email and update their course list
+    const student = await Student.findOneAndUpdate(
+      { email: email },
+      { $addToSet: { courses: course._id } }, // Use $addToSet to avoid duplicates
+      { new: true }
+    );
+
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    try{
+      const info = await transporter.sendMail({
+        from : process.env.ZOHO_USERNAME,
+        to: student.email, // list of receivers
+        subject: `CloudCollege : Enrolled in ${course.courseId} : ${course.name} succesfully`, // Subject line
+        text: "Your enrollment in the course has been successful. You can now view the course content.", // plain text body
+      })
+    }
+    catch (error){
+      console.log(error)
+      res.status(200).json({ error: 'An error occurred while sending the confirmation mail' })
+    }
+
+    res.status(200).json(student);
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ error: 'An error occurred while adding the course to the student\'s list.' });
+  }
+});
+
+app.patch('/students/:email/removeCourse', async (req, res) => {
+  const { email } = req.params;
+  const { _id } = req.body;
+
+  try {
+    // Check if the course exists
+    const course = await Course.findById(_id);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Find the student by email and update their course list
+    const student = await Student.findOneAndUpdate(
+      { email: email },
+      { $pull: { courses: course._id } }, // Use $addToSet to avoid duplicates
+      { new: true }
+    );
+
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    try{
+      const info = await transporter.sendMail({
+        from : process.env.ZOHO_USERNAME,
+        to: student.email, // list of receivers
+        subject: `CloudCollege : Unenrolled from ${course.courseId} : ${course.name} succesfully`, // Subject line
+        text: "You have been unenrolled from the course successfully.", // plain text body
+      })
+    }
+    catch (error){
+      console.log(error)
+      res.status(200).json({ error: 'An error occurred while sending the confirmation mail' })
+    }
+
+    res.status(200).json(student);
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ error: 'An error occurred while adding the course to the student\'s list.' });
+  }
+});
+
 //Get all the courses the student is enrolled in
 app.get('/students/:email/courses', async (req, res) => { //change this to find by objectid when u store id in localstorage
   try {
     const student = await Student.findOne({ email: req.params.email })
     let courses = await Course.find({"_id":{"$in" : student.courses}})
+    
     
     for (let i=0;i<courses.length;i++){
       courses[i] = {...(courses[i])._doc,instructors : await Instructor.find({"_id":{"$in" : courses[i].instructors}})}
@@ -230,7 +326,15 @@ app.post('/instructors', async (req, res) => {
 app.post('/courses', async (req, res) => {
   try {
 
-    const instructorsExist = await Promise.all(req.body.instructors.map(async (instructorId) => {
+    const instructorsExist = await Promise.all(req.body.instructors.map(async (instituteId) => {
+      return await Instructor.exists({ _id: instituteId });
+    }));
+
+    if (instructorsExist.includes(null)) {
+      return res.status(404).send({ error: 'One or more instructors not found' });
+    }
+
+    const studentsExist = await Promise.all(req.body.students.map(async (instituteId) => {
       return await Instructor.exists({ _id: instructorId });
     }));
 
@@ -288,8 +392,8 @@ app.patch('/courses/:courseId', async (req, res) => {
 
   try {
 
-    const instructorsExist = await Promise.all(req.body.instructors.map(async (instructorId) => {
-      return await Instructor.exists({ _id: instructorId });
+    const instructorsExist = await Promise.all(req.body.instructors.map(async (instituteId) => {
+      return await Instructor.exists({ _id: instituteId });
     }));
 
     if (instructorsExist.includes(null)) {
