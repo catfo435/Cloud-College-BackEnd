@@ -131,8 +131,7 @@ app.patch('/students/:email/removeCourse', async (req, res) => {
     // Find the student by email and update their course list
     const student = await Student.findOneAndUpdate(
       { email: email },
-      { $pull: { courses: course._id } }, // Use $addToSet to avoid duplicates
-      { new: true }
+      { $pull: { courses: course._id } },
     );
 
     if (!student) {
@@ -247,9 +246,9 @@ app.post('/instructors', async (req, res) => {
   });
   
   // Read an instructor by instituteId
-  app.get('/instructors/:instituteId', async (req, res) => {
+  app.get('/instructors/:email', async (req, res) => {
     try {
-      const instructor = await Instructor.findOne({ instituteId: req.params.instituteId });
+      const instructor = await Instructor.findOne({ email: req.params.email });
       if (!instructor) {
         return res.status(404).send();
       }
@@ -268,7 +267,7 @@ app.post('/instructors', async (req, res) => {
       for (let i=0;i<courses.length;i++){
         courses[i] = {...(courses[i])._doc,instructors : await Instructor.find({"_id":{"$in" : courses[i].instructors}})}
       }
-      
+   
       if (!instructor) {
         return res.status(404).send();
       }
@@ -334,15 +333,14 @@ app.post('/courses', async (req, res) => {
       return res.status(404).send({ error: 'One or more instructors not found' });
     }
 
-    const studentsExist = await Promise.all(req.body.students.map(async (instituteId) => {
-      return await Instructor.exists({ _id: instructorId });
-    }));
-
-    if (instructorsExist.includes(null)) {
-      return res.status(404).send({ error: 'One or more instructors not found' });
-    }
-
     const course = new Course(req.body);
+
+    await Instructor.findOneAndUpdate(
+      { email: req.body.email },
+      { $addToSet: { courses: course._id } }, // Use $addToSet to avoid duplicates
+      { new: true }
+    )
+
     await course.save();
     res.status(201).send(course);
   } catch (error) {
