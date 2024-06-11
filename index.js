@@ -4,7 +4,10 @@ const bodyParser = require('body-parser');
 const cors = require('cors') 
 const [Student,Instructor,Course] = require('./models/exports.js');
 const nodemailer = require("nodemailer");
+var jwt = require('jsonwebtoken')
+
 require('dotenv').config()
+
 
 const app = express();
 const port = 3000;
@@ -20,13 +23,11 @@ const transporter = nodemailer.createTransport({
       user: process.env.ZOHO_USERNAME,
       pass: process.env.ZOHO_PWD
   }
-})
+})   
 
 // Middleware
 app.use(cors(corsOptions))
 app.use(bodyParser.json()); //limit for request size, the profile picture might be too big and exceed the limit.
-
-//--------- STUDENTS CRUD -------------
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URL, {
@@ -37,6 +38,41 @@ mongoose.connect(process.env.MONGODB_URL, {
 }).catch(err => {
   console.error('Connection error', err);
 });
+
+//--------- MISCELLANEOUS -------------
+
+app.get('/profile-pic', async (req, res) => {
+  const {url} = req.query
+  try {
+    const response = await fetch(url);
+    res.send(response);
+  } catch (error) {
+    console.error(error)
+    res.status(500).send('Error fetching the profile picture');
+  }
+})
+
+app.get('/livestreamtoken', async (req, res) => {
+  const {courseId, userId} = req.query
+  const API_KEY = process.env.VIDEOSDK_KEY
+    const SECRET = process.env.VIDEOSDK_SECRET
+
+    const options = { 
+    expiresIn: '120m', 
+    algorithm: 'HS256' 
+    }
+
+    const payload = {
+      apikey: API_KEY,
+      permissions: [`allow_join`], // `ask_join` || `allow_mod` 
+      }
+    
+    const token = jwt.sign(payload, SECRET, options)
+    res.status(201).send({token})
+});
+
+//--------- STUDENTS CRUD -------------
+
 
 // Create a new student
 app.post('/students', async (req, res) => {
@@ -398,7 +434,7 @@ app.patch('/courses/:courseId', async (req, res) => {
       return res.status(404).send({ error: 'One or more instructors not found' });
     }
 
-    const course = await Course.findOneAndUpdate({ courseId: req.params.courseId }, req.body, { new: true });
+    const course = await Course.findOneAndUpdate({ _id: req.params.courseId }, req.body, { new: true });
 
     if (!course) {
       return res.status(404).send();
@@ -411,16 +447,37 @@ app.patch('/courses/:courseId', async (req, res) => {
   }
 });
 
+// Update the livestream roomId
+app.post('/courses/:courseId/livestream', async (req, res) => {
+
+  const updates = Object.keys(req.body);
+  const allowedUpdates = ['roomId'];
+  const isValidOperation = updates.every(update => allowedUpdates.includes(update));
+
+  if (!isValidOperation) {
+    return res.status(400).send({ error: 'Invalid updates!' });
+  }
+
+  try {
+    const course = await Course.findOneAndUpdate({ _id: req.params.courseId }, req.body, { new: true });
+
+    if (!course) {
+      return res.status(404).send();
+    }
+
+    res.status(200).send(course);
+  } catch (error) {
+    console.error(error)
+    res.status(400).send(error);
+  }
+})
+
 // Add topic to a course by courseId
 app.patch('/courses/:courseId/addContent', async (req, res) => {
 
   try {
 
-    let course = await Course.findOne({ _id: req.params.courseId });
-    
-    course.content.push(req.body)
-
-    course = await Course.findOneAndUpdate({ _id: req.params.courseId }, {content : course.content}, { new: true });
+    course = await Course.findOneAndUpdate({ _id: req.params.courseId }, {$push : {content : req.body}}, { new: true });
 
     if (!course) {
       return res.status(404).send();

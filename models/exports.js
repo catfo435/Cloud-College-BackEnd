@@ -91,7 +91,8 @@ const courseSchema = new mongoose.Schema({
       type: String,
       description: "The base64-encoded string of the content file. This field is optional."
     }
-  }]
+  }],
+  roomId: { type: String, required: true }
 });
 
 
