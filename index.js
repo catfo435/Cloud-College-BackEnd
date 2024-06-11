@@ -179,7 +179,7 @@ app.patch('/students/:email/addCourse', async (req, res) => {
 
     student = await Student.findOneAndUpdate(
       { email: email },
-      { $addToSet: { courses: course._id } , $inc : {wallet : -course.price} }, // Use $addToSet to avoid duplicates
+      { $addToSet: { courses: course._id } , wallet : (parseInt(student.wallet) - course.price).toString() },
       { new: true }
     );
 
@@ -197,13 +197,13 @@ app.patch('/students/:email/addCourse', async (req, res) => {
     }
     catch (error){
       console.log(error)
-      res.status(200).json({ error: 'An error occurred while sending the confirmation mail' })
+      res.status(200).json({ error,message: 'An error occurred while sending the confirmation mail' })
     }
 
     res.status(200).json(student);
   } catch (error) {
     console.log(error)
-    res.status(500).json({ error: 'An error occurred while adding the course to the student\'s list.' });
+    res.status(500).json({ error,message: 'An error occurred while adding the course to the student\'s list.' });
   }
 });
 
