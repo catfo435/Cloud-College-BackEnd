@@ -30,7 +30,12 @@ const studentSchema = new mongoose.Schema({
   courses: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course'
-  }]
+  }],
+  wallet: { 
+    type: Number,
+    default: 0,
+    min: 0 
+  }
 });
 
 const instructorSchema = new mongoose.Schema({
@@ -69,6 +74,10 @@ const courseSchema = new mongoose.Schema({
     required: true,
     unique: true,
     description: "The unique identifier of the course. Must follow the format XXX FYYY or XXXX FYYY."
+  },
+  price : {
+    type : Number,
+    required : true
   },
   instructors: [{
     type: mongoose.Schema.Types.ObjectId,

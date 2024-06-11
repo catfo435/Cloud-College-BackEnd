@@ -111,6 +111,55 @@ app.get('/students/:email', async (req, res) => {
   }
 });
 
+// Route to get wallet balance of a student by ID
+app.get('/students/:id/wallet', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find the student by ID
+    const student = await Student.findById(id);
+
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Respond with the student's wallet balance
+    res.status(200).json({ wallet: student.wallet });
+  } catch (error) {
+    res.status(500).json({ error: 'An error occurred while fetching the wallet balance.' });
+  }
+});
+
+// Route to add balance to the student's wallet by ID
+app.patch('/students/:id/addWallet', async (req, res) => {
+  const { id } = req.params;
+  let { amount } = req.body;
+
+  amount = parseInt(amount)
+
+  if (typeof amount !== 'number' || amount <= 0) {
+    return res.status(400).json({ error: 'Invalid amount. It must be a positive number.' });
+  }
+
+  try {
+    // Find the student by ID and update their wallet balance
+    const student = await Student.findByIdAndUpdate(
+      id,
+      { $inc: { wallet: amount } }, // Increment the wallet balance by the amount
+      { new: true }
+    );
+
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Respond with the updated student information
+    res.status(200).json(student);
+  } catch (error) {
+    res.status(500).json({ error,message: 'An error occurred while updating the wallet balance.' });
+  }
+})
+
 app.patch('/students/:email/addCourse', async (req, res) => {
   const { email } = req.params;
   const { _id } = req.body;
@@ -122,10 +171,15 @@ app.patch('/students/:email/addCourse', async (req, res) => {
       return res.status(404).json({ error: 'Course not found' });
     }
 
-    // Find the student by email and update their course list
-    const student = await Student.findOneAndUpdate(
+    let student = await Student.findOne({ email: email })
+
+    if (parseInt(student.wallet) < parseInt(course.price)) {
+      return res.status(406).send("No sufficient funds")
+    }
+
+    student = await Student.findOneAndUpdate(
       { email: email },
-      { $addToSet: { courses: course._id } }, // Use $addToSet to avoid duplicates
+      { $addToSet: { courses: course._id } , $inc : {wallet : -course.price} }, // Use $addToSet to avoid duplicates
       { new: true }
     );
 
